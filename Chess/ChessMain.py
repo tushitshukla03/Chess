@@ -58,7 +58,13 @@ def main():
                     moveMade = True           
         if moveMade:
             validMoves = gs.getValidMoves()
-            moveMade = False        
+            moveMade = False    
+        if gs.checkmate():
+            running = False
+            print("Checkmate")
+        elif gs.stalemate():
+            running = False
+            print("Stalemate")    
         drawGameState(screen, gs)
         clock.tick(MAX_FPS)
         p.display.flip() 

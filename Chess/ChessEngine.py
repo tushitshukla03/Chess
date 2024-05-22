@@ -17,19 +17,105 @@ class GameState():
         self.moveFunctions = {'p': self.getPawnMoves, 'R': self.getRookMoves, 'N': self.getKnightMoves, 'B': self.getBishopMoves, 'Q': self.getQueenMoves, 'K': self.getKingMoves}
         self.whiteToMove = True
         self.moveLog = []
+        self.whiteKingLocation = (7, 4)
+        self.blackKingLocation = (0, 4)
     def makeMove(self, move):
         self.board[move.startRow][move.startCol] = "--"
         self.board[move.endRow][move.endCol] = move.pieceMoved
         self.moveLog.append(move)
         self.whiteToMove = not self.whiteToMove
+        if move.pieceMoved == 'wK':
+            self.whiteKingLocation = (move.endRow, move.endCol)
+        elif move.pieceMoved == 'bK':
+            self.blackKingLocation = (move.endRow, move.endCol)
     def undoMove(self):
         if len(self.moveLog) != 0:
             move = self.moveLog.pop()
             self.board[move.startRow][move.startCol] = move.pieceMoved
             self.board[move.endRow][move.endCol] = move.pieceCaptured
             self.whiteToMove = not self.whiteToMove
+            if move.pieceMoved == 'wK':
+                self.whiteKingLocation = (move.startRow, move.startCol)
+            elif move.pieceMoved == 'bK':
+                self.blackKingLocation = (move.startRow, move.startCol)
+    def inCheck(self):
+        if self.whiteToMove:
+            return self.squareUnderAttack(self.whiteKingLocation[0], self.whiteKingLocation[1])
+        else:
+            return self.squareUnderAttack(self.blackKingLocation[0], self.blackKingLocation[1])
+    
+    def squareUnderAttack(self, r, c):
+        # Check for opponent pieces attacking the square
+        enemyColor = 'b' if self.whiteToMove else 'w'
+        directions = {
+            'N': [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)],
+            'K': [(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)],
+            'B': [(-1, -1), (-1, 1), (1, -1), (1, 1)],
+            'R': [(-1, 0), (1, 0), (0, -1), (0, 1)],
+            'Q': [(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]
+        }
+        
+        # Check for knight attacks
+        for d in directions['N']:
+            endRow, endCol = r + d[0], c + d[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8:
+                piece = self.board[endRow][endCol]
+                if piece[0] == enemyColor and piece[1] == 'N':
+                    return True
+
+        # Check for king attacks
+        for d in directions['K']:
+            endRow, endCol = r + d[0], c + d[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8:
+                piece = self.board[endRow][endCol]
+                if piece[0] == enemyColor and piece[1] == 'K':
+                    return True
+
+        # Check for sliding pieces (bishops, rooks, queens)
+        for pieceType in ('B', 'R', 'Q'):
+            for d in directions[pieceType]:
+                for i in range(1, 8):
+                    endRow, endCol = r + d[0] * i, c + d[1] * i
+                    if 0 <= endRow < 8 and 0 <= endCol < 8:
+                        piece = self.board[endRow][endCol]
+                        if piece == "--":
+                            continue
+                        elif piece[0] == enemyColor and (piece[1] == pieceType or piece[1] == 'Q'):
+                            return True
+                        else:
+                            break
+                    else:
+                        break
+
+        # Check for pawn attacks
+        if self.whiteToMove:
+            pawnDirections = [(-1, -1), (-1, 1)]
+        else:
+            pawnDirections = [(1, -1), (1, 1)]
+        for d in pawnDirections:
+            endRow, endCol = r + d[0], c + d[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8:
+                piece = self.board[endRow][endCol]
+                if piece[0] == enemyColor and piece[1] == 'p':
+                    return True
+
+        return False
     def getValidMoves(self):
-        return self.getAllPossibleMoves() 
+        moves = self.getAllPossibleMoves()
+        validMoves = []
+        for move in moves:
+            self.makeMove(move)
+            self.whiteToMove = not self.whiteToMove
+            if not self.inCheck():
+                validMoves.append(move)
+            self.whiteToMove = not self.whiteToMove
+            self.undoMove()
+        return validMoves
+    def checkmate(self):
+        return self.inCheck() and len(self.getValidMoves()) == 0
+
+    def stalemate(self):
+        return not self.inCheck() and len(self.getValidMoves()) == 0
     
     def getAllPossibleMoves(self):
         moves = [Move((6, 4), (4, 4), self.board), Move((1, 4), (3, 4), self.board)]
