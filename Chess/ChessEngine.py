@@ -115,10 +115,11 @@ class GameState():
         return self.inCheck() and len(self.getValidMoves()) == 0
 
     def stalemate(self):
+        print(self.getValidMoves())
         return not self.inCheck() and len(self.getValidMoves()) == 0
     
     def getAllPossibleMoves(self):
-        moves = [Move((6, 4), (4, 4), self.board), Move((1, 4), (3, 4), self.board)]
+        moves = []
         for r in range(0, 8):
             for c in range(0, 8):
                 turn = self.board[r][c][0]
