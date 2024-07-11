@@ -5,6 +5,7 @@ It will keep move log.
 """
 import numpy as np
 
+
 class GameState:
     def __init__(self):
         """
@@ -217,6 +218,7 @@ class GameState:
             if self.inCheck():
                 self.checkmate = True
             else:
+                # TODO stalemate on repeated moves
                 self.stalemate = True
         else:
             self.checkmate = False
@@ -624,7 +626,7 @@ class Move:
             else:
                 return self.piece_moved[1] + self.getRankFile(self.end_row, self.end_col)
 
-        # TODO Disambiguating moves
+        
 
     def getRankFile(self, row, col):
         return self.cols_to_files[col] + self.rows_to_ranks[row]

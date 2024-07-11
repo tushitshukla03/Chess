@@ -120,7 +120,10 @@ def scoreBoard(game_state):
         return STALEMATE
 
     score = 0
+    total_material = 0
     board = game_state.board
+
+    # Material and positional evaluation
     for row in range(len(board)):
         for col in range(len(board[row])):
             piece = board[row][col]
@@ -128,6 +131,88 @@ def scoreBoard(game_state):
                 piece_position_score = piece_position_scores.get(piece, np.zeros((8,8)))
                 if piece[0] == 'w':
                     score += piece_score[piece[1]] + piece_position_score[row][col]
+                    total_material += piece_score[piece[1]]
                 elif piece[0] == 'b':
                     score -= piece_score[piece[1]] + piece_position_score[row][col]
+                    total_material += piece_score[piece[1]]
+
+    # Pawn structure evaluation
+    score += evaluatePawnStructure(board)
+
+    # Game phase adjustments
+    if total_material > 19:  # Opening or middlegame
+        score += evaluateOpening(board)
+    else:  # Endgame
+        
+        score += evaluateEndgame(board)
+
+    return score
+
+def evaluatePawnStructure(board):
+    score = 0
+    white_pawn_positions = []
+    black_pawn_positions = []
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            piece = board[row][col]
+            if piece == 'wp':
+                white_pawn_positions.append((row, col))
+            elif piece == 'bp':
+                black_pawn_positions.append((row, col))
+    score += evaluatePawns(white_pawn_positions, 'w')
+    score -= evaluatePawns(black_pawn_positions, 'b')
+    return score
+
+def evaluatePawns(pawn_positions, color):
+    score = 0
+    for pos in pawn_positions:
+        row, col = pos
+        # Double pawns
+        if pawn_positions.count((row, col)) > 1:
+            score -= 0.5
+        # Isolated pawns
+        if not ((row-1, col) in pawn_positions or
+                   (row+1, col) in pawn_positions or
+                   (row, col-1) in pawn_positions or
+                   (row, col+1) in pawn_positions):
+            score -= 0.5
+        # Passed pawns
+        if color == 'w' and all(r < row for r, c in pawn_positions):
+            score += 1
+        if color == 'b' and all(r > row for r, c in pawn_positions):
+            score += 1
+    return score
+
+def evaluateOpening(board):
+    score = 0
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            piece = board[row][col]
+            if piece != "--":
+                # Center control
+                if piece in 'PpNnBb' and (row in [3, 4] and col in [3, 4]):
+                    score += 0.2 if piece[0] == 'w' else -0.2
+                # King safety
+                if piece == 'wK' and (row > 1 and row < 6) and (col > 1 and col < 6):
+                    score -= 0.5
+                if piece == 'bK' and (row > 1 and row < 6) and (col > 1 and col < 6):
+                    score += 0.5
+    return score
+
+def evaluateEndgame(board):
+    score = 0
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            piece = board[row][col]
+            if piece != "--":
+                # King activity
+                if piece == 'wK' and (row in [0, 1, 6, 7] or col in [0, 1, 6, 7]):
+                    score -= 0.5
+                if piece == 'bK' and (row in [0, 1, 6, 7] or col in [0, 1, 6, 7]):
+                    score += 0.5
+                # Pawn promotion potential
+                if piece == 'wp' and row == 7:
+                    score += 1
+                if piece == 'bp' and row == 1:
+                    score -= 1
     return score
