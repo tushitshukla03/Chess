@@ -1,7 +1,65 @@
 import random
+from typing import Counter
 import numpy as np
 
+import ChessEngine
+
 piece_score = {"K": 0, "Q": 9, "R": 5, "B": 3, "N": 3, "p": 1}
+
+
+
+
+# Define the openings with their move sequences
+openings_moves = {
+    "Sicilian Defense": [
+        ["e4", ["c7","c5"]],
+        ["Nf3", ["d7","d6"]],
+        ["d4", ["c5","d4"]],
+        ["Nxd4", "Nf6"]
+    ],
+    "King's Gambit": [
+        ["e4", ["e7","e5"]],
+        ["f4", ["e5","f4"]],
+        ["Nf3", ["d7","d5"]],
+        ["Nc3", ["Ng8","Nf6"]],
+    ],
+    "Queen's Gambit": [
+        ["d4", ["d7","d5"]],
+        ["c4",[ "c7","c6"]],
+    ],
+    # "Caro-Kann Defense": [
+    #     ["e4", ["c7","c6"]],
+    #     ["d4", ["d7","d5"]],
+    # ],
+    # "Ruy Lopez": [
+    #     ["e4", ["e7","e5"]],
+    #     ["Nf3", ["Nb8","Nc6"]],
+    # ],
+    # "French Defense": [
+    #     ["e4", ["e7","e6"]],
+    #     ["d4", ["d7","d5"]],
+    #     ["Nc3", ["Ng8","Nf6"]]
+    # ],
+    # "Pirc Defense": [
+    #     ["e4", ["d7","d6"]],
+    #     ["d4", ["Ng8","Nf6"]],
+    #     ["Nc3", ["g7","g6"]]
+    # ],
+    "King's Indian Attack": [
+        ["Nf3", ["g7","g6"]],
+        ["g3", ["Bf8","Bg7"]],
+    ],
+    "Nimzo-Larsen Attack": [
+        ["b3", ["e7","e5"]],
+        ["Bb2",["Nb8","Nc6"]]
+    ]
+}
+
+
+
+
+
+
 
 knight_scores = np.array([
     [0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.0],
@@ -46,7 +104,10 @@ queen_scores = np.array([
     [0.2, 0.4, 0.5, 0.4, 0.4, 0.4, 0.4, 0.2],
     [0.0, 0.2, 0.2, 0.3, 0.3, 0.2, 0.2, 0.0]
 ])
-
+ranks_to_rows = {"1": 7, "2": 6, "3": 5, "4": 4,
+                     "5": 3, "6": 2, "7": 1, "8": 0}
+files_to_cols = {"a": 0, "b": 1, "c": 2, "d": 3,
+                     "e": 4, "f": 5, "g": 6, "h": 7}
 pawn_scores = np.array([
     [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
     [0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
@@ -73,36 +134,126 @@ piece_position_scores = {
 
 CHECKMATE = float('inf')
 STALEMATE = 0
-DEPTH = 4
+DEPTH = 3
 transposition_table = {}
+counter = 0
 def findBestMove(game_state, valid_moves, return_queue):
     global next_move
     next_move = None
-    random.shuffle(valid_moves)
-    findMoveNegaMaxAlphaBeta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE, 1 if game_state.white_to_move else -1)
-    return_queue.put(next_move)
+    
+    move_log = game_state.move_log
+    move_texts = []
+    for i in range(0, len(move_log), 2):
+        move_string = [str(move_log[i])]
+        if i + 1 < len(move_log):
+            move_string.append(str(move_log[i + 1]))
+        move_texts.append(move_string)
+    t = False
+    k = ''
+    if len(move_texts) >= 10:
+        global DEPTH
+        DEPTH = 4
+    for open in openings_moves.values():
+        if t:
+            break
+        for i in range(len(move_texts)):
+            if len(move_texts) > len(open):
+                break
+            if i==len(move_texts)-1 and move_texts[i][0] == open[i][0] and len(open[i])>1:
+                k = open[i][1]
+                mo = ChessEngine.Move((ranks_to_rows[open[i][1][0][-1]],files_to_cols[open[i][1][0][-2]]), (ranks_to_rows[open[i][1][1][-1]],files_to_cols[open[i][1][1][-2]]), game_state.board)
+                return_queue.put(mo)
+                t = True
+                break
+                
+            if move_texts[i][0] != open[i][0] or (len(open[i])>1 and move_texts[i][1] != open[i][1][1]):
+                break 
+    if not t:
+        random.shuffle(valid_moves)
+        findMoveNegaMaxAlphaBeta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE, 1 if game_state.white_to_move else -1)
+        print(counter,next_move,type(next_move),k,type(k))
+        return_queue.put(next_move)
+
+                
+        
+    
+    
+    
+def board_to_fen(board):
+    fen = ""
+    for row in board:
+        empty_count = 0
+        for square in row:
+            if square == "--":
+                empty_count += 1
+            else:
+                if empty_count > 0:
+                    fen += str(empty_count)
+                    empty_count = 0
+                fen += square[1].upper() if square[0] == "w" else square[1]
+        if empty_count > 0:
+            fen += str(empty_count)
+        fen += "/"
+    fen = fen[:-1]
+    return fen
 
 def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_multiplier):
+    global counter
+    counter += 1
     global next_move
-    if depth == 0:
-        return turn_multiplier * scoreBoard(game_state)
+    fen = board_to_fen(game_state.board)
+    key = (fen, depth, alpha, beta, turn_multiplier)
     
+    if key in transposition_table:
+        return transposition_table[key]
+    
+    if depth == 0:
+        score = turn_multiplier * scoreBoard(game_state)
+        transposition_table[key] = score
+        return score
     
     max_score = -CHECKMATE
     for move in valid_moves:
         game_state.makeMove(move)
         next_moves = game_state.getValidMoves()
         score = -findMoveNegaMaxAlphaBeta(game_state, next_moves, depth - 1, -beta, -alpha, -turn_multiplier)
+        game_state.undoMove()
         if score > max_score:
             max_score = score
             if depth == DEPTH:
                 next_move = move
-        game_state.undoMove()
-        if max_score > alpha:  # pruning
+        if max_score > alpha:
             alpha = max_score
         if alpha >= beta:
             break
+    
+    transposition_table[key] = max_score
     return max_score
+    
+#depricated
+# def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_multiplier):
+#     global counter
+#     counter += 1
+#     global next_move
+#     if depth == 0:
+#         return turn_multiplier * scoreBoard(game_state)
+    
+    
+#     max_score = -CHECKMATE
+#     for move in valid_moves:
+#         game_state.makeMove(move)
+#         next_moves = game_state.getValidMoves()
+#         score = -findMoveNegaMaxAlphaBeta(game_state, next_moves, depth - 1, -beta, -alpha, -turn_multiplier)
+#         if score > max_score:
+#             max_score = score
+#             if depth == DEPTH:
+#                 next_move = move
+#         game_state.undoMove()
+#         if max_score > alpha:  # pruning
+#             alpha = max_score
+#         if alpha >= beta:
+#             break
+#     return max_score
 
 def findRandomMove(valid_moves):
     """
@@ -140,6 +291,7 @@ def scoreBoard(game_state):
     score += evaluatePawnStructure(board)
 
     # Game phase adjustments
+    
     if total_material > 19:  # Opening or middlegame
         score += evaluateOpening(board)
     else:  # Endgame
