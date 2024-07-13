@@ -10,12 +10,57 @@ piece_score = {"K": 0, "Q": 9, "R": 5, "B": 3, "N": 3, "p": 1}
 
 
 # Define the openings with their move sequences
+openings_move = {
+    "Queen's": [[["d2","d4"],"d5"],
+                [["c2","c4"],"c6"],
+                [["e2","e3"],"Nf6"],
+                [["Ng1","Nf3"],"Be7"],
+                [["e4","e5"],"e5"]],
+    "Queens": [[["d2","d4"],"d5"],
+                [["c2","c4"],"e6"],
+                [["Ng1","Nf3"],"Nf6"],
+                [["Nb1","Nc3"],"Bb4"],
+                [["Bc1","Bg5"],"e4"]],
+    "Quns": [[["d2","d4"],"d5"],
+                [["c2","c4"],"e6"],
+                [["Ng1","Nf3"],"c5"],
+                [["c4","d5"],"dx5"],
+                [["Bc1","Bf4"],"Nc6"]],
+    "Qun": [[["d2","d4"],"d5"],
+                [["c2","c4"],"e6"],
+                [["Ng1","Nf3"],"Nc6"],
+                [["Nb1","Nc3"],"Nf6"],
+                [["a2","a3"],"Be7"]],
+    "queen":    [[["d2","d4"],"Nf6"],
+                [["c2","c4"],"e6"],
+                [["Ng1","Nf3"],"e5"],
+                [["e4","e5"],"e5"],
+                [["Nb1","Nxc3"],"c6"]
+                ],
+    "queenstake":  [[["d2","d4"],"d5"],
+                [["c2","c4"],"c4"],
+                [["e2","e3"],"e6"],
+                [["Ng1","Nf3"],"Nf6"],
+                [["Bf1","Bxc4"],"a6"]],
+    "queenstak":  [[["d2","d4"],"Nc6"],
+                [["d4","d5"],"Ne5"],
+                [["e2","e4"],"e6"],
+                [["d5","e6"],"e6"],
+                [["Qd1","Qd8"],"Kd8"]],
+    "queensta":  [[["d2","d4"],"e6"],
+                [["e2","e4"],"d5"],
+                [["Nb1","Nd2"],"c5"],
+                [["Ng1","Nf3"],"Nf6"],
+                ],
+    
+}
 openings_moves = {
     "Sicilian Defense": [
         ["e4", ["c7","c5"]],
         ["Nf3", ["d7","d6"]],
         ["d4", ["c5","d4"]],
-        ["Nxd4", "Nf6"]
+        ["Nxd4", ["Ng8","Nf6"]],
+        ["Nc3", ["Nb8", "Nc6"]]
     ],
     "King's Gambit": [
         ["e4", ["e7","e5"]],
@@ -31,15 +76,15 @@ openings_moves = {
     #     ["e4", ["c7","c6"]],
     #     ["d4", ["d7","d5"]],
     # ],
-    # "Ruy Lopez": [
-    #     ["e4", ["e7","e5"]],
-    #     ["Nf3", ["Nb8","Nc6"]],
-    # ],
-    # "French Defense": [
-    #     ["e4", ["e7","e6"]],
-    #     ["d4", ["d7","d5"]],
-    #     ["Nc3", ["Ng8","Nf6"]]
-    # ],
+    "Ruy Lopez": [
+        ["e4", ["e7","e5"]],
+        ["Nf3", ["Nb8","Nc6"]],
+    ],
+    "French Defense": [
+        ["e4", ["e7","e6"]],
+        ["d4", ["d7","d5"]],
+        ["Nc3", ["Ng8","Nf6"]]
+    ],
     # "Pirc Defense": [
     #     ["e4", ["d7","d6"]],
     #     ["d4", ["Ng8","Nf6"]],
@@ -132,6 +177,7 @@ piece_position_scores = {
     "bp": np.flipud(pawn_scores)
 }
 
+
 CHECKMATE = float('inf')
 STALEMATE = 0
 DEPTH = 3
@@ -150,28 +196,50 @@ def findBestMove(game_state, valid_moves, return_queue):
         move_texts.append(move_string)
     t = False
     k = ''
-    if len(move_texts) >= 10:
+    if len(move_texts) >= 6:
         global DEPTH
         DEPTH = 4
-    for open in openings_moves.values():
-        if t:
-            break
-        for i in range(len(move_texts)):
-            if len(move_texts) > len(open):
-                break
-            if i==len(move_texts)-1 and move_texts[i][0] == open[i][0] and len(open[i])>1:
-                k = open[i][1]
-                mo = ChessEngine.Move((ranks_to_rows[open[i][1][0][-1]],files_to_cols[open[i][1][0][-2]]), (ranks_to_rows[open[i][1][1][-1]],files_to_cols[open[i][1][1][-2]]), game_state.board)
+    if game_state.white_to_move:
+        if len(move_texts) == 0:
+                mo = ChessEngine.Move((ranks_to_rows[openings_move["Queen's"][0][0][0][-1]],files_to_cols[openings_move["Queen's"][0][0][0][-2]]), (ranks_to_rows[openings_move["Queen's"][0][0][1][-1]],files_to_cols[openings_move["Queen's"][0][0][1][-2]]), game_state.board)
                 return_queue.put(mo)
-                t = True
+        for open in openings_move.values():
+            if t:
                 break
-                
-            if move_texts[i][0] != open[i][0] or (len(open[i])>1 and move_texts[i][1] != open[i][1][1]):
-                break 
+            for i in range(len(move_texts)):
+                    if len(move_texts) > len(open):
+                        break
+                    if i==len(move_texts)-1 and move_texts[i][1] == open[i][-1] and len(open)>i+1:
+                        k = open[i+1][0]
+                        print(k)
+                        mo = ChessEngine.Move((ranks_to_rows[open[i+1][0][0][-1]],files_to_cols[open[i+1][0][0][-2]]), (ranks_to_rows[open[i+1][0][1][-1]],files_to_cols[open[i+1][0][1][-2]]), game_state.board)
+                        return_queue.put(mo)
+                        t = True
+                        break
+                        
+                    if move_texts[i][1] != open[i][1]:
+                        print(move_texts[i],open[i],"vdv")
+                        break
+    else:
+        for open in openings_moves.values():
+            if t:
+                break
+            for i in range(len(move_texts)):
+                if len(move_texts) > len(open):
+                    break
+                if i==len(move_texts)-1 and move_texts[i][0] == open[i][0] and len(open[i])>1:
+                    k = open[i][1]
+                    mo = ChessEngine.Move((ranks_to_rows[open[i][1][0][-1]],files_to_cols[open[i][1][0][-2]]), (ranks_to_rows[open[i][1][1][-1]],files_to_cols[open[i][1][1][-2]]), game_state.board)
+                    return_queue.put(mo)
+                    t = True
+                    break
+                    
+                if move_texts[i][0] != open[i][0] or (len(open[i])>1 and move_texts[i][1] != open[i][1][1]):
+                    break 
     if not t:
         random.shuffle(valid_moves)
         findMoveNegaMaxAlphaBeta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE, 1 if game_state.white_to_move else -1)
-        print(counter,next_move,type(next_move),k,type(k))
+        # print(counter,next_move,type(next_move),k,type(k))
         return_queue.put(next_move)
 
                 
@@ -217,11 +285,11 @@ def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_m
         game_state.makeMove(move)
         next_moves = game_state.getValidMoves()
         score = -findMoveNegaMaxAlphaBeta(game_state, next_moves, depth - 1, -beta, -alpha, -turn_multiplier)
-        game_state.undoMove()
         if score > max_score:
             max_score = score
             if depth == DEPTH:
                 next_move = move
+        game_state.undoMove()
         if max_score > alpha:
             alpha = max_score
         if alpha >= beta:
@@ -259,6 +327,7 @@ def findRandomMove(valid_moves):
     """
     Picks and returns a random valid move.
     """
+    print("huihui tuhshshsh")
     return random.choice(valid_moves)
 
 def scoreBoard(game_state):
@@ -268,7 +337,7 @@ def scoreBoard(game_state):
         else:
             return CHECKMATE  # white wins
     elif game_state.stalemate:
-        return STALEMATE
+        return 0  # draw
 
     score = 0
     total_material = 0
@@ -279,13 +348,13 @@ def scoreBoard(game_state):
         for col in range(len(board[row])):
             piece = board[row][col]
             if piece != "--":
-                piece_position_score = piece_position_scores.get(piece, np.zeros((8,8)))
-                if piece[0] == 'w':
-                    score += piece_score[piece[1]] + piece_position_score[row][col]
-                    total_material += piece_score[piece[1]]
-                elif piece[0] == 'b':
-                    score -= piece_score[piece[1]] + piece_position_score[row][col]
-                    total_material += piece_score[piece[1]]
+                piece_position_score = 0
+                if piece[1] != "K":
+                    piece_position_score = piece_position_scores[piece][row][col]
+                if piece[0] == "w":
+                    score += piece_score[piece[1]] + piece_position_score
+                if piece[0] == "b":
+                    score -= piece_score[piece[1]] + piece_position_score
 
     # Pawn structure evaluation
     score += evaluatePawnStructure(board)
@@ -321,18 +390,18 @@ def evaluatePawns(pawn_positions, color):
         row, col = pos
         # Double pawns
         if pawn_positions.count((row, col)) > 1:
-            score -= 0.5
+            score -= 0.2
         # Isolated pawns
         if not ((row-1, col) in pawn_positions or
                    (row+1, col) in pawn_positions or
                    (row, col-1) in pawn_positions or
                    (row, col+1) in pawn_positions):
-            score -= 0.5
+            score -= 0.2
         # Passed pawns
         if color == 'w' and all(r < row for r, c in pawn_positions):
-            score += 1
+            score += 0.5
         if color == 'b' and all(r > row for r, c in pawn_positions):
-            score += 1
+            score += 0.5
     return score
 
 def evaluateOpening(board):
@@ -346,9 +415,9 @@ def evaluateOpening(board):
                     score += 0.2 if piece[0] == 'w' else -0.2
                 # King safety
                 if piece == 'wK' and (row > 1 and row < 6) and (col > 1 and col < 6):
-                    score -= 0.5
+                    score -= 0.3
                 if piece == 'bK' and (row > 1 and row < 6) and (col > 1 and col < 6):
-                    score += 0.5
+                    score += 0.3
     return score
 
 def evaluateEndgame(board):

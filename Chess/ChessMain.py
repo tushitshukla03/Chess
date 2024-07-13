@@ -14,7 +14,7 @@ IMAGES = {}
 def loadImages():
     pieces = ['wp', 'wR', 'wN', 'wB', 'wK', 'wQ', 'bp', 'bR', 'bN', 'bB', 'bK', 'bQ']
     for piece in pieces:
-        IMAGES[piece] = p.transform.scale(p.image.load('./Chess/images/pieces-basic-png/' + piece + '.png'), (SQUARE_SIZE,SQUARE_SIZE))
+        IMAGES[piece] = p.transform.scale(p.image.load('./images/pieces-basic-png/' + piece + '.png'), (SQUARE_SIZE,SQUARE_SIZE))
 
 def main():
     p.init()
@@ -34,8 +34,8 @@ def main():
     move_undone = False
     move_finder_process = None
     move_log_font = p.font.SysFont("Arial", 14, False, False)
-    player_one = True
-    player_two = False
+    player_one = False
+    player_two = True
 
     while running:
         human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
@@ -66,12 +66,16 @@ def main():
                         if not move_made:
                             player_clicks = [square_selected]
             elif e.type == p.KEYDOWN:
-                if e.key == p.K_z:
+                if e.key == p.K_z:  # undo when 'z' is pressed
                     game_state.undoMove()
                     move_made = True
                     animate = False
                     game_over = False
-                if e.key == p.K_r:
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
+                if e.key == p.K_r:  # reset the game when 'r' is pressed
                     game_state = ChessEngine.GameState()
                     valid_moves = game_state.getValidMoves()
                     square_selected = ()
@@ -79,6 +83,10 @@ def main():
                     move_made = False
                     animate = False
                     game_over = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
 
         if not game_over and not human_turn and not move_undone:
             if not ai_thinking:
@@ -86,14 +94,17 @@ def main():
                 return_queue = Queue()
                 move_finder_process = Process(target=ChessAI.findBestMove, args=(game_state, valid_moves, return_queue))
                 move_finder_process.start()
-            if not return_queue.empty():
+            if not move_finder_process.is_alive():
                 ai_move = return_queue.get()
-                if ai_move is not None:
-                    game_state.makeMove(ai_move)
-                    move_made = True
-                    animate = True
+                if ai_move is None:
+                    ai_move = ChessAI.findRandomMove(valid_moves)
+                game_state.makeMove(ai_move)
+                move_made = True
+                animate = True
                 ai_thinking = False
-                move_finder_process.join()
+                    
+                    
+                
 
         if move_made:
             if animate:
